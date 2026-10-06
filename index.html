@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Радулов против вратарей</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    font-family: Arial, sans-serif; background: #0a1e3f;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  #game {
+    position: relative; width: 100%; height: 100%; overflow: hidden;
+    background: linear-gradient(180deg, #0a1e3f 0%, #1a3a6b 45%, #dde8ff 45%, #ffffff 100%);
+  }
+  #redLine { position: absolute; left: 0; right: 0; top: 50%; height: 3px; background: rgba(255,0,0,0.35); }
+  #topBar {
+    position: absolute; top: 0; left: 0; right: 0; padding: 8px 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(0,0,0,0.65); color: #fff; font-size: 15px; font-weight: bold;
+    z-index: 20; border-bottom: 2px solid #ffd700;
+  }
+  #levelName { color: #ffd700; font-size: 14px; text-align: center; flex: 1; }
+  #goalsCount { color: #ffd700; font-size: 20px; }
+  #goal {
+    position: absolute; top: 55px; left: 50%; transform: translateX(-50%);
+    width: 180px; height: 80px; border: 4px solid #ff0000; border-top: none;
+    border-radius: 0 0 12px 12px; background: rgba(255,0,0,0.05); z-index: 3;
+  }
+  #goalie {
+    position: absolute; top: 75px; left: 50%; transform: translateX(-50%);
+    font-size: 70px; z-index: 6; transition: transform 0.15s;
+  }
+  #goalieName {
+    position: absolute; top: 160px; left: 50%; transform: translateX(-50%);
+    color: #fff; background: rgba(0,0,0,0.6); padding: 4px 12px;
+    border-radius: 20px; font-size: 14px; font-weight: bold; z-index: 6;
+    border: 1px solid #ffd700;
+  }
+  #radulov { position: absolute; bottom: 30px; font-size: 60px; z-index: 10; transition: transform 0.1s; }
+  .puck { position: absolute; font-size: 32px; z-index: 8; pointer-events: none; }
+  .popup {
+    position: absolute; font-size: 28px; font-weight: bold; z-index: 30;
+    pointer-events: none; animation: rise 1s ease-out forwards;
+  }
+  @keyframes rise {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-80px); opacity: 0; }
+  }
+  .screen {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    padding: 25px; background: rgba(5, 5, 20, 0.94); color: #fff; z-index: 100;
+  }
+  .hidden { display: none !important; }
+  h1 {
+    font-size: 28px; margin-bottom: 12px; color: #ffd700;
+    text-shadow: 0 0 15px rgba(255,215,0,0.6);
+  }
+  .screen p { font-size: 15px; line-height: 1.6; margin-bottom: 10px; max-width: 380px; }
+  .screen button {
+    margin-top: 15px; padding: 16px 40px; font-size: 20px; font-weight: bold;
+    border: none; border-radius: 50px;
+    background: linear-gradient(135deg, #ff3333, #ff9900);
+    color: #fff; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(255,51,51,0.6);
+  }
+  .screen button:active { transform: scale(0.95); }
+  .medal { font-size: 100px; animation: medalDrop 1s ease-out; margin-bottom: 8px; }
+  @keyframes medalDrop {
+    0% { transform: translateY(-300px) scale(0.2) rotate(-180deg); opacity: 0; }
+    70% { transform: translateY(10px) scale(1.15) rotate(8deg); opacity: 1; }
+    100% { transform: translateY(0) scale(1) rotate(0); }
+  }
+  .letter {
+    background: rgba(255,255,255,0.1); border: 2px solid #ffd700;
+    border-radius: 14px; padding: 16px; margin-top: 12px;
+    max-width: 400px; font-size: 14px; line-height: 1.6; color: #ffe9a8;
+  }
+  .levelBadge {
+    display: inline-block; background: #ffd700; color: #000;
+    padding: 4px 14px; border-radius: 20px; font-weight: bold;
+    font-size: 14px; margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div id="game">
+  <div id="redLine"></div>
+  <div id="topBar">
+    <span>🏒 Радулов</span>
+    <span id="levelName">Уровень 1</span>
+    <span>Голы: <span id="goalsCount">0</span></span>
+  </div>
+  <div id="goal"></div>
+  <div id="goalie">🧍‍♂️</div>
+  <div id="goalieName">Серебряков Никита</div>
+  <div id="radulov">🏒</div>
+
+  <!-- Старт -->
+  <div id="startScreen" class="screen">
+    <h1>🏒 Радулов против вратарей 🥅</h1>
+    <p><b>Ксюша</b> играет за Александра Радулова!</p>
+    <p>3 уровня — 3 вратаря:<br>
+    1️⃣ Серебряков Никита<br>
+    2️⃣ Даниил Исаев<br>
+    3️⃣ Арсений</p>
+    <p>Тапай по экрану — бей шайбой.<br>Сбей все щиты вратаря → он упадёт → ГОЛ!</p>
+    <button id="startBtn">НАЧАТЬ МАТЧ</button>
+  </div>
+
+  <!-- Между уровнями -->
+  <div id="betweenScreen" class="screen hidden">
+    <div class="medal">🥇</div>
+    <h1 id="betweenTitle">Уровень пройден!</h1>
+    <p id="betweenText">Ты обыграла вратаря!</p>
+    <button id="nextLevelBtn">СЛЕДУЮЩИЙ УРОВЕНЬ</button>
+  </div>
+
+  <!-- Победа -->
+  <div id="winScreen" class="screen hidden">
+    <div class="medal">🏆</div>
+    <h1>Ксюша — чемпионка! 🏒</h1>
+    <p>Ты обыграла всех трёх вратарей!</p>
+    <div class="letter">
+      <b>💌 Письмо от Арсения:</b><br><br>
+      «Ксюша, ты разгромила меня в хоккее! 🏒<br>
+      Радулов бы тобой гордился.<br>
+      Прости, если что-то было не так.<br>
+      Ты — лучшая! 🥇💕»
+      <br><br>
+      <b>— Арсений</b>
+    </div>
+    <button id="retryBtn">СЫГРАТЬ СНОВА</button>
+  </div>
+
+  <!-- Проигрыш -->
+  <div id="loseScreen" class="screen hidden">
+    <h1>Не получилось 😤</h1>
+    <p id="loseText">Вратарь отбился!</p>
+    <button id="loseRetryBtn">ПОПРОБОВАТЬ СНОВА</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // Уровни — настройки вратарей
+  var LEVELS = [
+    { name: 'Серебряков Никита', emoji: '🧍‍♂️', shields: 3, speed: 11, dodge: 0 },
+    { name: 'Даниил Исаев',      emoji: '🧤', shields: 5, speed: 13, dodge: 0 },
+    { name: 'Арсений',           emoji: '🧍‍♂️', shields: 7, speed: 15, dodge: 0.25 }
+  ];
+
+  var radulov = document.getElementById('radulov');
+  var goalie = document.getElementById('goalie');
+  var goalieName = document.getElementById('goalieName');
+  var goalsEl = document.getElementById('goalsCount');
+  var levelNameEl = document.getElementById('levelName');
+  var gameEl = document.getElementById('game');
+
+  var startScreen = document.getElementById('startScreen');
+  var betweenScreen = document.getElementById('betweenScreen');
+  var winScreen = document.getElementById('winScreen');
+  var loseScreen = document.getElementById('loseScreen');
+  var betweenTitle = document.getElementById('betweenTitle');
+  var betweenText = document.getElementById('betweenText');
+  var loseText = document.getElementById('loseText');
+
+  var goals = 0;
+  var shields = 5;
+  var currentLevel = 0;
+  var running = false;
+  var goalieFalling = false;
+  var radulovX = 0;
+  var pucks = [];
+  var lastShotTime = 0;
+  var animId = null;
+
+  radulovX = window.innerWidth / 2 - 30;
+  radulov.style.left = radulovX + 'px';
+
+  function moveRadulov(clientX) {
+    var x = clientX - 30;
+    if (x < 0) x = 0;
+    if (x > window.innerWidth - 60) x = window.innerWidth - 60;
+    radulovX = x;
+    radulov.style.left = radulovX + 'px';
+  }
+
+  function shoot() {
+    var now = Date.now();
+    if (now - lastShotTime < 200) return;
+    lastShotTime = now;
+
+    radulov.style.transform = 'rotate(-15deg)';
+    setTimeout(function() { radulov.style.transform = 'rotate(0)'; }, 120);
+
+    var puckEl = document.createElement('div');
+    puckEl.className = 'puck';
+    puckEl.textContent = '⚫';
+    var startX = radulovX + 25;
+    var startY = window.innerHeight - 110;
+    puckEl.style.left = startX + 'px';
+    puckEl.style.top = startY + 'px';
+    gameEl.appendChild(puckEl);
+
+    var lvl = LEVELS[currentLevel];
+    var goalCenterX = window.innerWidth / 2;
+
+    // Арсений иногда отбивает — шайба летит мимо
+    var offTarget = false;
+    if (lvl.dodge > 0 && Math.random() < lvl.dodge) offTarget = true;
+
+    var targetX = goalCenterX + (Math.random() - 0.5) * (offTarget ? 200 : 50);
+    var targetY = offTarget ? 200 : 100;
+
+    pucks.push({
+      el: puckEl, x: startX, y: startY,
+      targetX: targetX, targetY: targetY,
+      speed: lvl.speed,
+      offTarget: offTarget
+    });
+  }
+
+  function showPopup(x, y, text, color) {
+    var p = document.createElement('div');
+    p.className = 'popup';
+    p.textContent = text;
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    p.style.color = color;
+    gameEl.appendChild(p);
+    setTimeout(function() { if (p.parentNode) p.parentNode.removeChild(p); }, 1000);
+  }
+
+  function fallGoalie() {
+    if (goalieFalling) return;
+    goalieFalling = true;
+    var rot = 0, posY = 0;
+    var t = setInterval(function() {
+      rot += 20; posY += 15;
+      goalie.style.transform = 'translateX(-50%) rotate(' + rot + 'deg) translateY(' + posY + 'px)';
+      if (rot >= 180) clearInterval(t);
+    }, 40);
+
+    showPopup(window.innerWidth / 2 - 60, 180, '😵 УПАЛ!', '#ffd700');
+
+    setTimeout(function() {
+      goals++;
+      goalsEl.textContent = goals;
+      showPopup(window.innerWidth / 2 - 60, 200, '🏒 ГОЛ!', '#00ff00');
+      setTimeout(levelComplete, 1300);
+    }, 1400);
+  }
+
+  function levelComplete() {
+    running = false;
+    if (animId) cancelAnimationFrame(animId);
+
+    if (currentLevel < LEVELS.length - 1) {
+      var medals = ['🥇', '🥈', '🥉'];
+      betweenTitle.textContent = 'Уровень ' + (currentLevel + 1) + ' пройден!';
+      betweenText.innerHTML = 'Ты обыграла <b>' + LEVELS[currentLevel].name + '</b>!<br>Впереди — ' + LEVELS[currentLevel + 1].name + ' 💪';
+      betweenScreen.classList.remove('hidden');
+    } else {
+      winScreen.classList.remove('hidden');
+    }
+  }
+
+  function resetGoalie(levelIndex) {
+    goalieFalling = false;
+    var lvl = LEVELS[levelIndex];
+    goalie.textContent = lvl.emoji;
+    goalie.style.transform = 'translateX(-50%) rotate(0deg)';
+    goalie.style.top = '75px';
+    goalieName.textContent = lvl.name;
+    levelNameEl.textContent = 'Уровень ' + (levelIndex + 1) + ' — ' + lvl.name;
+    shields = lvl.shields;
+  }
+
+  function startLevel(levelIndex) {
+    currentLevel = levelIndex;
+    // очистка шайб
+    var i;
+    for (i = 0; i < pucks.length; i++) {
+      if (pucks[i].el.parentNode) pucks[i].el.parentNode.removeChild(pucks[i].el);
+    }
+    pucks = [];
+    lastShotTime = 0;
+
+    resetGoalie(levelIndex);
+
+    radulovX = window.innerWidth / 2 - 30;
+    radulov.style.left = radulovX + 'px';
+
+    startScreen.classList.add('hidden');
+    betweenScreen.classList.add('hidden');
+    winScreen.classList.add('hidden');
+    loseScreen.classList.add('hidden');
+
+    running = true;
+    if (animId) cancelAnimationFrame(animId);
+    animId = requestAnimationFrame(gameLoop);
+  }
+
+  function startGame() {
+    goals = 0;
+    goalsEl.textContent = '0';
+    startLevel(0);
+  }
+
+  function gameLoop() {
+    if (!running) return;
+    var i;
+    for (i = pucks.length - 1; i >= 0; i--) {
+      var p = pucks[i];
+      var dx = p.targetX - p.x;
+      var dy = p.targetY - p.y;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < 20 || p.y < 70) {
+        if (!goalieFalling && shields > 0 && !p.offTarget) {
+          shields--;
+          goalie.style.transform = 'translateX(-60%) rotate(-8deg)';
+          setTimeout(function() {
+            if (!goalieFalling) goalie.style.transform = 'translateX(-50%) rotate(0deg)';
+          }, 200);
+          showPopup(p.targetX - 20, 130, '💥', '#ff3333');
+          if (shields <= 0) setTimeout(fallGoalie, 400);
+        } else if (p.offTarget) {
+          showPopup(p.targetX - 20, p.targetY, '❌', '#ff6666');
+        }
+        if (p.el.parentNode) p.el.parentNode.removeChild(p.el);
+        pucks.splice(i, 1);
+        continue;
+      }
+
+      p.x = p.x + (dx / dist) * p.speed;
+      p.y = p.y + (dy / dist) * p.speed;
+      p.el.style.left = p.x + 'px';
+      p.el.style.top = p.y + 'px';
+    }
+    animId = requestAnimationFrame(gameLoop);
+  }
+
+  // Управление
+  function handleTouch(e) {
+    if (!running || goalieFalling) return;
+    e.preventDefault();
+    moveRadulov(e.touches[0].clientX);
+    shoot();
+  }
+  function handleTouchMove(e) {
+    if (!running || goalieFalling) return;
+    e.preventDefault();
+    moveRadulov(e.touches[0].clientX);
+  }
+  function handleMouseDown(e) {
+    if (!running || goalieFalling) return;
+    moveRadulov(e.clientX);
+    shoot();
+  }
+  function handleMouseMove(e) {
+    if (!running || goalieFalling) return;
+    moveRadulov(e.clientX);
+  }
+
+  gameEl.addEventListener('touchstart', handleTouch, { passive: false });
+  gameEl.addEventListener('touchmove', handleTouchMove, { passive: false });
+  gameEl.addEventListener('mousedown', handleMouseDown);
+  gameEl.addEventListener('mousemove', handleMouseMove);
+
+  document.getElementById('startBtn').addEventListener('click', startGame);
+  document.getElementById('nextLevelBtn').addEventListener('click', function() {
+    startLevel(currentLevel + 1);
+  });
+  document.getElementById('retryBtn').addEventListener('click', startGame);
+  document.getElementById('loseRetryBtn').addEventListener('click', startGame);
+
+})();
+</script>
+</body>
+</html>
